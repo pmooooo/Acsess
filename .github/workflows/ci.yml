@@ -1,0 +1,71 @@
+name: ci/cd pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:12
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: acsess
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12'
+
+    - name: Install python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint
+        pip install -r requirements.txt
+
+    - name: Activate virtual environment
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+
+    - name: Install django
+      run: |
+        pip install django
+
+    - name: Run pylint
+      run: |
+        pylint acsess/acsess_backend/acsess_backend
+
+    - name: set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16'
+
+    - name: Install Node dependencies
+      run: |
+        cd acsess/acsess_frontend
+        npm install
+
+    - name: Run eslint
+      run: |
+        cd acsess/acsess_frontend
+        npm run lint
